@@ -231,7 +231,7 @@ public class Outliner {
     public List<Entry> generate(@NotNull Indexer idx, @NotNull String abspath) {
         ModuleType mt = idx.loadFile(abspath);
         if (mt == null) {
-            return new ArrayList<Entry>();
+            return new ArrayList<>();
         }
         return generate(mt.getTable(), abspath);
     }
@@ -246,21 +246,16 @@ public class Outliner {
      */
     @NotNull
     public List<Entry> generate(@NotNull Scope scope, @NotNull String path) {
-        List<Entry> result = new ArrayList<Entry>();
+        List<Entry> result = new ArrayList<>();
+        Set<Binding> entries = new TreeSet<>();
 
-        Set<Binding> entries = new TreeSet<Binding>();
         for (Binding b : scope.values()) {
-            if (!b.isSynthetic()
-                    && !b.isBuiltin()
-                    && !b.getDefs().isEmpty()
-                    && path.equals(b.getSingle().getFile()))
-            {
+            if (!b.isSynthetic() && !b.isBuiltin() && path.equals(b.getFile())) {
                 entries.add(b);
             }
         }
 
         for (Binding nb : entries) {
-            Def signode = nb.getSingle();
             List<Entry> kids = null;
 
             if (nb.getKind() == Binding.Kind.CLASS) {
@@ -277,7 +272,7 @@ public class Outliner {
             }
 
             Entry kid = kids != null ? new Branch() : new Leaf();
-            kid.setOffset(signode.getStart());
+            kid.setOffset(nb.getIdentStart());
             kid.setQname(nb.getQname());
             kid.setKind(nb.getKind());
 

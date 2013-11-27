@@ -2,10 +2,7 @@ package org.yinwang.pysonar.ast;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.yinwang.pysonar.Binding;
-import org.yinwang.pysonar.Builtins;
-import org.yinwang.pysonar.Indexer;
-import org.yinwang.pysonar.Scope;
+import org.yinwang.pysonar.*;
 import org.yinwang.pysonar.types.*;
 
 import java.util.*;
@@ -96,7 +93,7 @@ public class Call extends Node {
         } else if (rator.isClassType()) {
             return new InstanceType(rator, this, aTypes);
         } else {
-            addWarning("calling non-function and non-class: " + rator);
+            Indexer.idx.putProblem(this, "calling non-function and non-class: " + rator);
             return Indexer.idx.builtins.unknown;
         }
     }
@@ -197,39 +194,44 @@ public class Call extends Node {
                 aType = aTypes.get(i);
             } else if (i - nPositional >= 0 && i - nPositional < dSize) {
                 aType = dTypes.get(i - nPositional);
-            } else if (kwTypes != null && args.get(i).isName() &&
-                    kwTypes.containsKey(args.get(i).asName().getId()))
-            {
-                aType = kwTypes.get(args.get(i).asName().getId());
-                kwTypes.remove(args.get(i).asName().getId());
-            } else if (starargsType != null && starargsType.isTupleType() &&
-                    j < starargsType.asTupleType().getElementTypes().size())
-            {
-                aType = starargsType.asTupleType().get(j++);
             } else {
-                aType = Indexer.idx.builtins.unknown;
-                if (call != null) {
-                    Indexer.idx.putProblem(args.get(i), "unable to bind argument:" + args.get(i));
+                if (kwTypes != null && args.get(i).isName() &&
+                        kwTypes.containsKey(args.get(i).asName().id))
+                {
+                    aType = kwTypes.get(args.get(i).asName().id);
+                    kwTypes.remove(args.get(i).asName().id);
+                } else if (starargsType != null && starargsType.isTupleType() &&
+                        j < starargsType.asTupleType().getElementTypes().size())
+                {
+                    aType = starargsType.asTupleType().get(j++);
+                } else {
+                    aType = Indexer.idx.builtins.unknown;
+                    if (call != null) {
+                        Indexer.idx.putProblem(args.get(i), "unable to bind argument:" + args.get(i));
+                    }
                 }
             }
-            NameBinder.bind(funcTable, arg, aType, Binding.Kind.PARAMETER);
+            Binder.bind(funcTable, arg, aType, Binding.Kind.PARAMETER);
             fromType.add(aType);
         }
 
-        if (kwTypes != null && !kwTypes.isEmpty()) {
-            Type kwValType = UnionType.newUnion(kwTypes.values());
-            NameBinder.bind(funcTable, fkwargs, new DictType(Indexer.idx.builtins.BaseStr, kwValType),
-                    Binding.Kind.PARAMETER);
-        } else {
-            NameBinder.bind(funcTable, fkwargs, Indexer.idx.builtins.unknown,
-                    Binding.Kind.PARAMETER);
+        if (fkwargs != null) {
+            if (kwTypes != null && !kwTypes.isEmpty()) {
+                Type kwValType = UnionType.newUnion(kwTypes.values());
+                DictType dt = new DictType(Indexer.idx.builtins.BaseStr, kwValType);
+                Binder.bind(funcTable, fkwargs, dt, Binding.Kind.PARAMETER);
+            } else {
+                Binder.bind(funcTable, fkwargs, Indexer.idx.builtins.unknown, Binding.Kind.PARAMETER);
+            }
         }
 
-        if (aTypes.size() > args.size()) {
-            Type starType = new TupleType(aTypes.subList(args.size(), aTypes.size()));
-            NameBinder.bind(funcTable, fvarargs, starType, Binding.Kind.PARAMETER);
-        } else {
-            NameBinder.bind(funcTable, fvarargs, Indexer.idx.builtins.unknown, Binding.Kind.PARAMETER);
+        if (fvarargs != null) {
+            if (aTypes.size() > args.size()) {
+                Type starType = new TupleType(aTypes.subList(args.size(), aTypes.size()));
+                Binder.bind(funcTable, fvarargs, starType, Binding.Kind.PARAMETER);
+            } else {
+                Binder.bind(funcTable, fvarargs, Indexer.idx.builtins.unknown, Binding.Kind.PARAMETER);
+            }
         }
 
         return fromType;

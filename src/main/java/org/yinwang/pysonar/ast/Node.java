@@ -55,23 +55,16 @@ public abstract class Node implements java.io.Serializable {
     }
 
 
-    public boolean bindsName() {
-        return false;
-    }
-
-
     @Nullable
     public String getFile() {
         return parent != null ? parent.getFile() : null;
     }
 
 
-    public void addChildren(@Nullable Node... nodes) {
-        if (nodes != null) {
-            for (Node n : nodes) {
-                if (n != null) {
-                    n.setParent(this);
-                }
+    public void addChildren(@NotNull Node... nodes) {
+        for (Node n : nodes) {
+            if (n != null) {
+                n.setParent(this);
             }
         }
     }
@@ -89,22 +82,24 @@ public abstract class Node implements java.io.Serializable {
 
 
     @Nullable
-    public Str docstring() {
+    public Str getDocString() {
+        // find body if there is any
         Node body = null;
         if (this instanceof FunctionDef) {
-            body = ((FunctionDef) this).body;
+            body = asFunctionDef().body;
         } else if (this instanceof ClassDef) {
-            body = ((ClassDef) this).body;
+            body = asClassDef().body;
         } else if (this instanceof Module) {
-            body = ((Module) this).body;
+            body = asModule().body;
         }
 
-        if (body instanceof Block && ((Block) body).seq.size() >= 1) {
-            Node firstExpr = ((Block) body).seq.get(0);
+        // find the first string in the body
+        if (body instanceof Block && body.asBlock().seq.size() >= 1) {
+            Node firstExpr = body.asBlock().seq.get(0);
             if (firstExpr instanceof Expr) {
-                Node docstrNode = ((Expr) firstExpr).value;
+                Node docstrNode = firstExpr.asExpr().value;
                 if (docstrNode != null && docstrNode instanceof Str) {
-                    return (Str) docstrNode;
+                    return docstrNode.asStr();
                 }
             }
         }
@@ -133,17 +128,17 @@ public abstract class Node implements java.io.Serializable {
 
 
     public boolean isClassDef() {
-        return false;
+        return this instanceof ClassDef;
     }
 
 
     public boolean isFunctionDef() {
-        return false;
+        return this instanceof FunctionDef;
     }
 
 
     public boolean isLambda() {
-        return false;
+        return this instanceof Lambda;
     }
 
 
@@ -166,6 +161,18 @@ public abstract class Node implements java.io.Serializable {
     @NotNull
     public Module asModule() {
         return (Module) this;
+    }
+
+
+    @NotNull
+    public Block asBlock() {
+        return (Block) this;
+    }
+
+
+    @NotNull
+    public Str asStr() {
+        return (Str) this;
     }
 
 
@@ -194,13 +201,62 @@ public abstract class Node implements java.io.Serializable {
 
 
     @NotNull
+    public Expr asExpr() {
+        return (Expr) this;
+    }
+
+
+    @NotNull
+    public NList asNList() {
+        return (NList) this;
+    }
+
+
+    @NotNull
+    public Attribute asAttribute() {
+        return (Attribute) this;
+    }
+
+
+    @NotNull
+    public Tuple asTuple() {
+        return (Tuple) this;
+    }
+
+
+    @NotNull
     public Global asGlobal() {
         return (Global) this;
     }
 
 
-    protected void addWarning(String msg) {
-        Indexer.idx.putProblem(this, msg);
+    // Does the node bind names?
+    public boolean isDefinition() {
+        return (this instanceof ClassDef) || (this instanceof FunctionDef);
+    }
+
+
+    @Nullable
+    public Name getName() {
+        return null;
+    }
+
+
+    public boolean hasParent() {
+        return parent != null;
+    }
+
+
+    // Does the node bind names?
+    public boolean bindsName() {
+        return (this instanceof Assign) ||
+                (this instanceof ClassDef) ||
+                (this instanceof FunctionDef) ||
+                (this instanceof Comprehension) ||
+                (this instanceof ExceptHandler) ||
+                (this instanceof For) ||
+                (this instanceof Import) ||
+                (this instanceof ImportFrom);
     }
 
 

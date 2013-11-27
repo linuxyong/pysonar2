@@ -2,6 +2,7 @@ package org.yinwang.pysonar.ast;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.yinwang.pysonar.Binder;
 import org.yinwang.pysonar.Binding;
 import org.yinwang.pysonar.Indexer;
 import org.yinwang.pysonar.Scope;
@@ -58,28 +59,6 @@ public class FunctionDef extends Node {
     }
 
 
-    @Override
-    public boolean isFunctionDef() {
-        return true;
-    }
-
-
-    @Override
-    public boolean bindsName() {
-        return true;
-    }
-
-
-    /**
-     * Returns the name of the function for indexing/qname purposes.
-     * Lambdas will return a generated name.
-     */
-    @Nullable
-    protected String getBindingName(Scope s) {
-        return name.getId();
-    }
-
-
     public List<Node> getArgs() {
         return args;
     }
@@ -90,17 +69,13 @@ public class FunctionDef extends Node {
     }
 
 
-    @Nullable
-    public List<Type> getDefaultTypes() {
-        return defaultTypes;
-    }
-
-
     public Node getBody() {
         return body;
     }
 
 
+    @NotNull
+    @Override
     public Name getName() {
         return name;
     }
@@ -115,14 +90,6 @@ public class FunctionDef extends Node {
 
 
     /**
-     * @param vararg the vararg to set
-     */
-    public void setVararg(Name vararg) {
-        this.vararg = vararg;
-    }
-
-
-    /**
      * @return the kwarg
      */
     public Name getKwarg() {
@@ -130,38 +97,19 @@ public class FunctionDef extends Node {
     }
 
 
-    /**
-     * @param kwarg the kwarg to set
-     */
-    public void setKwarg(Name kwarg) {
-        this.kwarg = kwarg;
-    }
-
-
-    /**
-     * A function's environment is not necessarily the enclosing scope. A
-     * method's environment is the scope of the most recent scope that is not a
-     * class.
-     * <p/>
-     * Be sure to distinguish the environment and the symbol table. The
-     * function's table is only used for the function's attributes like
-     * "im_class". Its parent should be the table of the enclosing scope, and
-     * its path should be derived from that scope too for locating the names
-     * "lexically".
-     */
     @NotNull
     @Override
     public Type resolve(@NotNull Scope outer) {
         resolveList(decoratorList, outer);   //XXX: not handling functional transformations yet
         FunType fun = new FunType(this, outer.getForwarding());
         fun.getTable().setParent(outer);
-        fun.getTable().setPath(outer.extendPath(getName().getId()));
+        fun.getTable().setPath(outer.extendPath(getName().id));
         fun.setDefaultTypes(resolveAndConstructList(defaults, outer));
         Indexer.idx.addUncalled(fun);
         Binding.Kind funkind;
 
         if (outer.getScopeType() == Scope.ScopeType.CLASS) {
-            if ("__init__".equals(name.getId())) {
+            if ("__init__".equals(name.id)) {
                 funkind = Binding.Kind.CONSTRUCTOR;
             } else {
                 funkind = Binding.Kind.METHOD;
@@ -175,7 +123,7 @@ public class FunctionDef extends Node {
             fun.setCls(outType.asClassType());
         }
 
-        NameBinder.bind(outer, name, fun, funkind);
+        Binder.bind(outer, name, fun, funkind);
         return Indexer.idx.builtins.Cont;
     }
 

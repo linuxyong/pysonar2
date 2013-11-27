@@ -1,10 +1,7 @@
 package org.yinwang.pysonar.ast;
 
 import org.jetbrains.annotations.NotNull;
-import org.yinwang.pysonar.Binding;
-import org.yinwang.pysonar.Indexer;
-import org.yinwang.pysonar.Scope;
-import org.yinwang.pysonar._;
+import org.yinwang.pysonar.*;
 import org.yinwang.pysonar.types.ModuleType;
 import org.yinwang.pysonar.types.Type;
 
@@ -20,17 +17,13 @@ public class Module extends Node {
     private String sha1;   // input source file sha1
 
 
-    public Module(Block body, int start, int end) {
+    public Module(Block body, String file, int start, int end) {
         super(start, end);
-        this.body = body;
-        addChildren(this.body);
-    }
-
-
-    public void setFile(String file) {
-        this.file = file;
         this.name = _.moduleName(file);
+        this.body = body;
+        this.file = _.unifyPath(file);
         this.sha1 = _.getSHA1(new File(file));
+        addChildren(body);
     }
 
 
@@ -41,26 +34,13 @@ public class Module extends Node {
     }
 
 
-    /**
-     * Used when module is parsed from an in-memory string.
-     *
-     * @param path file path
-     * @param md5  sha1 message digest for source contents
-     */
-    public void setFileAndMD5(String path, String md5) {
-        file = path;
-        name = _.moduleName(file);
-        this.sha1 = md5;
-    }
-
-
     @Override
     public String getFile() {
         return file;
     }
 
 
-    public String getMD5() {
+    public String getSHA1() {
         return sha1;
     }
 
@@ -68,8 +48,8 @@ public class Module extends Node {
     @NotNull
     @Override
     public Type resolve(@NotNull Scope s) {
-        ModuleType mt = new ModuleType(_.moduleName(file), file, Indexer.idx.globaltable);
-        s.insert(_.moduleQname(file), this, mt, Binding.Kind.MODULE);
+        ModuleType mt = new ModuleType(name, file, Indexer.idx.globaltable);
+        Binder.bind(s, this, mt, Binding.Kind.MODULE);  // module's origin is itself
         resolveExpr(body, mt.getTable());
         return mt;
     }

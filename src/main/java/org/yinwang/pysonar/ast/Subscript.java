@@ -57,7 +57,7 @@ public class Subscript extends Node {
             if (st.isListType() || st.isNumType()) {
                 return vt;
             } else {
-                addWarning("Possible KeyError (wrong type for subscript)");
+                Indexer.idx.putProblem(this, "Possible KeyError (wrong type for subscript)");
                 return Indexer.idx.builtins.unknown;
             }
         } else {

@@ -1,6 +1,7 @@
 package org.yinwang.pysonar.ast;
 
 import org.jetbrains.annotations.NotNull;
+import org.yinwang.pysonar.Binder;
 import org.yinwang.pysonar.Indexer;
 import org.yinwang.pysonar.Scope;
 import org.yinwang.pysonar.types.Type;
@@ -23,12 +24,6 @@ public class Assign extends Node {
     }
 
 
-    @Override
-    public boolean bindsName() {
-        return true;
-    }
-
-
     @NotNull
     @Override
     public Type resolve(@NotNull Scope s) {
@@ -37,7 +32,7 @@ public class Assign extends Node {
         } else {
             Type valueType = resolveExpr(rvalue, s);
             for (Node t : targets) {
-                NameBinder.bind(s, t, valueType);
+                Binder.bind(s, t, valueType);
             }
         }
 
